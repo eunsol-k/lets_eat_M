@@ -1,3 +1,6 @@
-MODEL\config.py
-
-venv\Lib\
+MODEL/config.py
+venv/Lib/*
+PY/original/*
+PY/sample_data/*
+PY/sample_separate/*
+PY/sample_model/*
