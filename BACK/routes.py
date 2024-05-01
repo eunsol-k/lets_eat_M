@@ -1,5 +1,5 @@
-from controllers.controllers import ex_bp
+from controllers.controllers import rt_bp
 
 def routes_list(app):
-    app.register_blueprint(ex_bp)
+    app.register_blueprint(rt_bp)
     return app

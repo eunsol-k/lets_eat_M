@@ -9,14 +9,13 @@ class User(Base):
     username = Column(String)
     expired_date = Column(DateTime)
 
-    def __init__(self, id, pw, username, expired_date):
+    def __init__(self, id, pw, username):
         self.id = id
         self.pw = pw
         self.username = username
-        self.expired_date = expired_date
 
     def __repr__(self):
-        return "<User('%s', '%s', '%s', '%s')>" % (self.id, self.pw, self.username, self.expired_date)
+        return "<User('%s', '%s', '%s')>" % (self.id, self.pw, self.username)
 
 
 class Search(Base):

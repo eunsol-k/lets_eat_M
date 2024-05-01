@@ -8,10 +8,6 @@ def create_app():
     #routes list
     from routes import routes_list
     routes_list(app)
-
-    @app.route("/")
-    def hello_world():
-        return "hello world!"
     
     return app
 
