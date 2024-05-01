@@ -1,2 +1,7 @@
 MODEL/config.py
 venv/Lib/*
+PY/original/*
+PY/sample_data/*
+PY/sample_separate/*
+PY/sample_model/*
+>>>>>>> 3f7f8b186712485ca3fb34025529a848351812d3
