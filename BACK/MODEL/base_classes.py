@@ -22,8 +22,8 @@ class Search(Base):
     __tablename__ = 'search'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("user.id"))
-    item_id = Column(Integer, ForeignKey("medicine.item_id"))
+    user_id = Column(String, ForeignKey("user.id", ondelete="CASCADE"))
+    item_id = Column(Integer, ForeignKey("medicine.item_id", ondelete="CASCADE"))
     modified_date = Column(DateTime)
 
     def __init__(self, user_id, item_id, modified_date):
@@ -39,8 +39,9 @@ class Rating(Base):
     __tablename__ = 'rating'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("user.id"))
-    item_id = Column(Integer, ForeignKey("medicine.item_id"))
+    user_id = Column(String, ForeignKey("user.id", ondelete="CASCADE"))
+    item_id = Column(Integer, ForeignKey(
+        "medicine.item_id", ondelete="CASCADE"))
     score = Column(String)
 
     def __init__(self, user_id, item_id, score):
@@ -56,8 +57,9 @@ class Interest(Base):
     __tablename__ = 'interest'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("user.id"))
-    item_id = Column(Integer, ForeignKey("medicine.item_id"))
+    user_id = Column(String, ForeignKey("user.id", ondelete="CASCADE"))
+    item_id = Column(Integer, ForeignKey(
+        "medicine.item_id", ondelete="CASCADE"))
     updated_date = Column(DateTime)
 
     def __init__(self, user_id, item_id, updated_date):
@@ -92,8 +94,9 @@ class Memo(Base):
     __tablename__ = 'memo'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    item_id = Column(Integer, ForeignKey("medicine.item_id"))
-    user_id = Column(String, ForeignKey("user.id"))
+    item_id = Column(Integer, ForeignKey(
+        "medicine.item_id", ondelete="CASCADE"))
+    user_id = Column(String, ForeignKey("user.id", ondelete="CASCADE"))
     body = Column(Text)
     created_date = Column(DateTime)
     modified_date = Column(DateTime)
