@@ -3,13 +3,13 @@ import logging
 import logging.handlers
 from flask import Flask, Blueprint
 from flask_jwt_extended import JWTManager
-from configs.config import config
+from configs.config import config, Config
 from redis import StrictRedis
 from flask_restx import Api
 
 jwt = JWTManager()
 logger = logging.getLogger("myLogger")
-rc = StrictRedis(host='redis', port=6379, db=0)
+rc = StrictRedis(host=Config.REDIS, port=6379, db=0)
 
 bp_api = Blueprint(
     name="api",
@@ -38,9 +38,11 @@ api = Api(
 def register_router(app: Flask):
     from apis.v1.auth import Auth
     from apis.v1.mypage import MyPage
+    from apis.v1.medicine import Medicines
 
     api.add_namespace(Auth, '/auth')
     api.add_namespace(MyPage, '/mypage')
+    api.add_namespace(Medicines, '/medicines')
 
 def create_app():
     app = Flask(__name__)

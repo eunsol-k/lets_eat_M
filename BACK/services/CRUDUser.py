@@ -1,6 +1,7 @@
 from MODEL.session import Session
 from datetime import datetime
 from MODEL.base_classes import User
+import bcrypt
 
 
 class CRUDUser():
@@ -12,11 +13,11 @@ class CRUDUser():
             self.session.add(user)
             self.session.commit()
             return True
-        elif self.is_expired(user_id=user.id):
-            self.delete(user_id=user.id)
-            self.session.add(user)
-            self.session.commit()
-            return True
+        # elif self.is_expired(user_id=user.id):
+        #     self.delete(user_id=user.id)
+        #     self.session.add(user)
+        #     self.session.commit()
+        #     return True
         else:
             return False
     
@@ -40,10 +41,10 @@ class CRUDUser():
         else:
             return False
     
-    def is_correct(self, user_id, user_pw) -> bool:
-        count = self.session.query(User).filter(
-            User.id == user_id, User.pw == user_pw).count()
-        if count > 0:
+    def is_correct(self, user_id, user_pw:str) -> bool:
+        user = self.get(user_id=user_id)
+        hashed_pw = user.pw
+        if bcrypt.checkpw(user_pw.encode("utf-8"), hashed_pw.encode("utf-8")):
             return True
         else:
             return False
