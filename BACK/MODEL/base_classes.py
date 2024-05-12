@@ -1,5 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Text, BigInteger
 from MODEL.base import Base
+import json
 
 class User(Base):
     __tablename__ = 'user'
@@ -9,10 +10,11 @@ class User(Base):
     username = Column(String)
     expired_date = Column(DateTime)
 
-    def __init__(self, id, pw, username):
+    def __init__(self, id, pw, username, expired_date=None):
         self.id = id
         self.pw = pw
         self.username = username
+        self.expired_date = expired_date
 
     def __repr__(self):
         return "<User('%s', '%s', '%s')>" % (self.id, self.pw, self.username)

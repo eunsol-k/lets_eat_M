@@ -1,6 +1,7 @@
 from flask import jsonify, make_response
 from services.CRUDUser import CRUDUser
 from MODEL.base_classes import User
+import json
 from http import HTTPStatus
 from flask_restx import Resource, Namespace, fields, reqparse
 from app import rc
@@ -50,51 +51,28 @@ user_model = Auth.model(name="사용자 모델", model={
     "expired_date": fields.DateTime(description="회원 탈퇴 일자")
 })
 
-error_message = Auth.model(name="오류 메시지 모델", model={
-    "msg": fields.String(description="오류 내용")
+status_message = Auth.model(name="HTTP Status 메시지 모델", model={
+    "msg": fields.String(description="Status 내용")
 })
 
 
-@Auth.route('/register')
-class UsersRegister(Resource):
-    @Auth.doc(description="""회원 가입 시 사용하는 API입니다.\n토큰을 발급하지 않습니다.""")
-    @Auth.expect(users_register_model)
-    @Auth.response(HTTPStatus.CREATED.value, '회원 가입 성공.')
-    @Auth.response(HTTPStatus.INTERNAL_SERVER_ERROR.value, '이미 존재하는 유저입니다.', error_message)
-    def post(self):
-        """회원 가입"""
-        args = Users.payload
-        user_id = args.get('id')
-        user_pw = args.get('pw')
-        user_name = args.get('username')
-        encoded_pw = bcrypt.hashpw(user_pw.encode("utf-8"), bcrypt.gensalt())
-
-        user = User(user_id, encoded_pw, user_name)
-        result = crudUser.set(user=user)
-
-        if result:
-            return "", HTTPStatus.CREATED.value
-        else:
-            return make_response(jsonify(msg='User already Exists.'), HTTPStatus.INTERNAL_SERVER_ERROR.value)
-
-
 @Auth.route("/tokens")
-class Token(Resource):
+class AuthToken(Resource):
     @Auth.doc(description="""JWT 토큰을 발급하는 API입니다.\n로그인과 같은 기능입니다.""")
     @Auth.expect(token_req_model)
     @Auth.marshal_with(fields=token_res_model, code=HTTPStatus.CREATED.value, description="토큰 발급 성공.")
-    @Auth.response(HTTPStatus.UNAUTHORIZED.value, '인증되지 않은 사용자입니다.', error_message)
+    @Auth.response(HTTPStatus.UNAUTHORIZED.value, '인증되지 않은 사용자입니다.', status_message)
     def post(self):
         """토큰 발급"""
-
         args = Auth.payload
         user_id = args.get('id')
         user_pw = args.get('pw')
         user = crudUser.get(user_id=user_id)
 
-        if crudUser.is_exists_by_id(user_id) and crudUser.is_correct(user_id=user_id, user_pw=bcrypt.hashpw(user_pw.encode("utf-8"), bcrypt.gensalt())):
+        if crudUser.is_exists_by_id(user_id) and crudUser.is_correct(user_id=user_id, user_pw=user_pw):
             access_token = create_access_token(identity=user.id)
             refresh_token = create_refresh_token(identity=user.id)
+
             return dict(access_token=access_token, refresh_token=refresh_token), HTTPStatus.CREATED.value
 
         return make_response(jsonify(msg="Unauthorized."), HTTPStatus.UNAUTHORIZED.value)
@@ -106,32 +84,60 @@ class Token(Resource):
     @jwt_required(refresh=True)
     def patch(self):
         """토큰 갱신"""
-
         access_token = create_access_token(identity=get_jwt_identity())
         return dict(access_token=access_token), HTTPStatus.CREATED.value
 
 
+    jwt_blocklist = set()
     @Auth.doc(description="""인증 토큰을 폐기하는 API입니다.\n로그아웃과 같은 기능으로 인증 토큰을 폐기하고 재사용을 방지합니다.""")
     @Auth.expect(resource_parser)
-    @Auth.response(code=HTTPStatus.NO_CONTENT.value, description="토큰이 성공적으로 폐기되었을 때 반환.")
+    @Auth.response(HTTPStatus.NO_CONTENT.value, "토큰이 성공적으로 폐기되었을 때 반환.", status_message)
     @jwt_required()
     def delete(self):
         """토큰 폐기"""
-        crudUser.update_expired_date(user_id=get_jwt_identity())
-
         rc.set(name=get_jwt().get("jti"), value="")
-        return "", HTTPStatus.NO_CONTENT.value
+        return make_response(jsonify(msg="Token Expired."), HTTPStatus.NO_CONTENT.value)
 
 
 @Auth.route("/users")
-class Users(Resource):
+class AuthUsers(Resource):
     @Auth.doc(description="""사용자를 조회하는 API입니다.""")
     @Auth.expect(resource_parser)
     @Auth.marshal_with(fields=user_model, as_list=True, code=HTTPStatus.OK.value, description="사용자 조회 성공.")
     @jwt_required()
     def get(self):
-        """사용자 조회"""
-
+        """회원 조회"""
         user = crudUser.get(user_id=get_jwt_identity())
-        user = user.serialize()
-        return user, HTTPStatus.OK.value
+        user_dict = vars(user)
+        del user_dict['_sa_instance_state']
+
+        return user_dict, HTTPStatus.OK.value
+    
+    @Auth.doc(description="""회원 가입 시 사용하는 API입니다.\n이후 토큰 발급 API를 요청하세요.""")
+    @Auth.expect(users_register_model)
+    @Auth.response(HTTPStatus.CREATED.value, '회원 가입 성공.', status_message)
+    @Auth.response(HTTPStatus.INTERNAL_SERVER_ERROR.value, '이미 존재하는 유저입니다.', status_message)
+    def post(self):
+        """회원 가입"""
+        args = Auth.payload
+        user_id = args.get('id')
+        user_pw = args.get('pw')
+        user_name = args.get('username')
+        encoded_pw = bcrypt.hashpw(user_pw.encode("utf-8"), bcrypt.gensalt())
+
+        user = User(user_id, encoded_pw, user_name)
+        result = crudUser.set(user=user)
+
+        if result:
+            return make_response(jsonify(msg='User Created.'), HTTPStatus.CREATED.value)
+        else:
+            return make_response(jsonify(msg='User already Exists.'), HTTPStatus.INTERNAL_SERVER_ERROR.value)
+    
+    @Auth.doc(description="""회원 탈퇴 시 사용하는 API입니다.\n이후 토큰 폐기 API를 요청하세요.""")
+    @Auth.expect(resource_parser)
+    @Auth.response(HTTPStatus.NO_CONTENT.value, "사용자가 성공적으로 탈퇴하였을 때 반환.", status_message)
+    @jwt_required()
+    def delete(self):
+        """회원 탈퇴"""
+        crudUser.delete(user_id=get_jwt_identity())
+        return make_response(jsonify(msg="User Expired."), HTTPStatus.NO_CONTENT.value)
