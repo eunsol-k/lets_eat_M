@@ -23,9 +23,9 @@ Medicines = Namespace(
 
 
 medicine_res_fields = Medicines.model('단일 제품 정보 응답 모델', {
-    'item_id': fields.Integer(description='품목일련번호'),
+    'item_id': fields.String(description='품목일련번호'),
     'item_name': fields.String(description='품목명'),
-    'enter_id': fields.Integer(description='업소일련번호'),
+    'enter_id': fields.String(description='업소일련번호'),
     'enter_name': fields.String(description='업소명'),
     'constell': fields.String(description='성상'),
     'product_img': fields.String(description='큰제품이미지'),
@@ -40,7 +40,7 @@ medicine_res_fields = Medicines.model('단일 제품 정보 응답 모델', {
     'size_short': fields.String(description='크기단축'),
     'size_thick': fields.String(description='크기두께'),
     'creat_date_img': fields.String(description='이미지생성일자(약학정보원)'),
-    'class_id': fields.Integer(description='분류번호'),
+    'class_id': fields.String(description='분류번호'),
     'calss_name': fields.String(description='분류명'),
     'sp_ge': fields.String(description='전문일반구분'),
     'app_date_item': fields.String(description='품목허가일자'),
@@ -52,7 +52,7 @@ medicine_res_fields = Medicines.model('단일 제품 정보 응답 모델', {
     'ind_front_code': fields.String(description='표기코드앞'),
     'ind_back_code': fields.String(description='표기코드뒤'),
     'modified_date': fields.String(description='변경일자'),
-    'business_id': fields.Integer(description='사업자번호'),
+    'business_id': fields.String(description='사업자번호'),
 })
 
 medicine_res_header = Medicines.model('주의사항 응답 header 정보', {
@@ -101,14 +101,14 @@ request_parser = reqparse.RequestParser()
 request_parser.add_argument(
     "Authorization", help="Bearer {access_token}", type=str, required=True, location="headers", default="Bearer ")
 request_parser.add_argument(
-    "item_id", type=int, required=True, location="body")
+    "item_id", type=str, required=True, location="body")
 
 status_message = Medicines.model(name="HTTP Status 메시지 모델", model={
     "msg": fields.String(description="Status 내용")
 })
 
 
-@Medicines.route('/<int:item_id>')
+@Medicines.route('/<item_id>')
 class Medicine(Resource):
     @Medicines.doc(description="""item_id에 해당하는 특정 제품의 상세 정보를 조회합니다.""")
     @Medicines.response(HTTPStatus.OK.value, '단일 제품 정보 조회 성공.', medicine_res_fields)
@@ -125,7 +125,7 @@ class Medicine(Resource):
         return medicine_dict, HTTPStatus.OK.value
 
 
-@Medicines.route('/warning/<int:item_id>')
+@Medicines.route('/warning/<item_id>')
 class MedicineWarning(Resource):
     @Medicines.doc(description="""item_id에 해당하는 특정 제품의 주의사항 정보를 조회합니다.""")
     @Medicines.response(HTTPStatus.OK.value, '주의사항 조회 성공.', medicine_warning_res)
