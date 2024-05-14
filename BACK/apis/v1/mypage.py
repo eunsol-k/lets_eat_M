@@ -19,7 +19,7 @@ MyPage = Namespace(
 
 
 items_fields = MyPage.model('items 이하 모델', {
-    'item_id': fields.Integer(description='제품 ID'),
+    'item_id': fields.String(description='제품 ID'),
     'item_img': fields.String(description='제품 이미지')
 })
 
@@ -36,7 +36,7 @@ request_parser = reqparse.RequestParser()
 request_parser.add_argument(
     "Authorization", help="Bearer {access_token}", type=str, required=True, location="headers", default="Bearer ")
 request_parser.add_argument(
-    "item_id", type=int, required=True, location="body")
+    "item_id", type=str, required=True, location="body")
 
 status_message = MyPage.model(name="HTTP Status 메시지 모델", model={
     "msg": fields.String(description="Status 내용")
