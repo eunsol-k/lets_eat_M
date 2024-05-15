@@ -1,0 +1,99 @@
+from flask import jsonify, make_response
+from services.CRUDHistory import CRUDHistory
+from services.CRUDMedicine import CRUDMedicine
+from services.CRUDInterest import CRUDInterest
+import json
+from http import HTTPStatus
+from flask_restx import Resource, Namespace, fields, reqparse
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+
+crudHistory = CRUDHistory()
+crudMedicine = CRUDMedicine()
+crudInterest = CRUDInterest()
+
+
+History = Namespace(
+    name='History',
+    description='검색 기록을 위한 API'
+)
+
+
+resource_parser = reqparse.RequestParser()
+resource_parser.add_argument(
+    "Authorization", help="Bearer {access_token}", type=str, required=True, location="headers", default="Bearer ")
+
+status_message = History.model(name="HTTP Status 메시지 모델", model={
+    "msg": fields.String(description="Status 내용")
+})
+
+histories_fields = History.model('histories 이하 모델', {
+    'history_id': fields.String(description='검색 ID'),
+    'item_id': fields.String(description='제품 ID'),
+    'item_img': fields.String(description='제품 이미지'),
+    'like': fields.Boolean(description='좋아요 여부')
+})
+
+histories_res_fields = History.model('검색 목록 응답 모델', {
+    'count': fields.Integer(description='검색 기록 총 개수'),
+    'histories': fields.List(fields.Nested(histories_fields))
+})
+
+
+@History.route("")
+class HistoryGet(Resource):
+    @History.doc(description="""검색 기록 목록을 불러옵니다.""")
+    @History.expect(resource_parser)
+    @History.response(HTTPStatus.OK.value, '검색 기록 조회 성공.', histories_res_fields)
+    @History.response(HTTPStatus.UNAUTHORIZED.value, '인증되지 않은 사용자입니다.', status_message)
+    @jwt_required(optional=True)
+    def get(self):
+        """검색 기록 조회"""
+        user_id = get_jwt_identity()
+        if not user_id:
+            # 로그인되어 있지 않은 경우
+            return make_response(jsonify(msg="Unauthorized."), HTTPStatus.UNAUTHORIZED.value)
+        else:
+            # 로그인되어 있는 경우
+            # 현재 limit 무조건 10
+            histories = crudHistory.get_all_by_user(user_id=user_id)
+            items = []
+            data = {
+                'count': len(histories),
+                'histories': items
+            }
+
+            if histories is None or len(histories) == 0:
+                data['count'] = 0
+            else:
+                for history in histories:
+                    medicine = crudMedicine.get(item_id=history.item_id)
+                    interest = crudInterest.is_exists(
+                        user_id=user_id, item_id=history.item_id)
+
+                    item = {
+                        'history_id': history.id,
+                        'item_id': history.user_id,
+                        'item_img': medicine.product_img,
+                        'like': interest
+                    }
+                    items.append(item)
+
+            return make_response(jsonify(data=data), HTTPStatus.OK.value)
+
+
+@History.route("/<item_id>")
+class HistoryPost(Resource):
+    @History.doc(description="""검색 기록을 추가합니다.""")
+    @History.expect(resource_parser)
+    @History.response(HTTPStatus.CREATED.value, '검색 기록 추가 성공.', status_message)
+    @History.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
+    @jwt_required()
+    def post(self, item_id):
+        """검색 기록 추가"""
+        if not crudMedicine.is_exists(item_id=item_id):
+            return make_response(jsonify(msg="Item Not Found."), HTTPStatus.NOT_FOUND.value)
+
+        crudHistory.set(user_id=get_jwt_identity(), item_id=item_id)
+
+        return make_response(jsonify(msg="Added search history."), HTTPStatus.CREATED.value)

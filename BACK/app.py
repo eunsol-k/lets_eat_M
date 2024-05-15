@@ -37,12 +37,14 @@ api = Api(
 
 def register_router(app: Flask):
     from apis.v1.auth import Auth
-    from apis.v1.mypage import MyPage
+    from apis.v1.likes import Likes
     from apis.v1.medicine import Medicines
+    from apis.v1.history import History
 
     api.add_namespace(Auth, '/auth')
-    api.add_namespace(MyPage, '/mypage')
+    api.add_namespace(Likes, '/likes')
     api.add_namespace(Medicines, '/medicines')
+    api.add_namespace(History, '/history')
 
 def create_app():
     app = Flask(__name__)

@@ -22,8 +22,8 @@ class User(Base):
         return "<User('%s', '%s', '%s', %s)>" % (self.id, self.pw, self.username, self.role)
 
 
-class Search(Base):
-    __tablename__ = 'search'
+class History(Base):
+    __tablename__ = 'history'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("user.id", ondelete="CASCADE"))
@@ -37,7 +37,7 @@ class Search(Base):
         self.modified_date = modified_date
 
     def __repr__(self):
-        return "<Search('%s', '%s', '%s')>" % (self.user_id, self.item_id, self.modified_date)
+        return "<History('%s', '%s', '%s')>" % (self.user_id, self.item_id, self.modified_date)
 
 
 class Rating(Base):
@@ -65,13 +65,15 @@ class Interest(Base):
     user_id = Column(String, ForeignKey("user.id", ondelete="CASCADE"))
     item_id = Column(String, ForeignKey(
         "medicine.item_id", ondelete="CASCADE"))
+    modified_date = Column(DateTime)
 
-    def __init__(self, user_id, item_id):
+    def __init__(self, user_id, item_id, modified_date):
         self.user_id = user_id
         self.item_id = item_id
+        self.modified_date = modified_date
 
     def __repr__(self):
-        return "<Interest('%s', '%s')>" % (self.user_id, self.item_id)
+        return "<Interest('%s', '%s', '%s)>" % (self.user_id, self.item_id, self.modified_date)
 
 
 class Notice(Base):
