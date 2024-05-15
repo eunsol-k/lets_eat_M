@@ -1,12 +1,12 @@
 from flask import jsonify, make_response
 from services.CRUDUser import CRUDUser
 from MODEL.base_classes import User
-import json
 from http import HTTPStatus
 from flask_restx import Resource, Namespace, fields, reqparse
 from app import rc
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 import bcrypt
+
 
 crudUser = CRUDUser()
 
@@ -125,7 +125,7 @@ class AuthUsers(Resource):
         user_name = args.get('username')
         encoded_pw = bcrypt.hashpw(user_pw.encode("utf-8"), bcrypt.gensalt())
 
-        user = User(user_id, encoded_pw, user_name)
+        user = User(user_id, encoded_pw, user_name, 'User')
         result = crudUser.set(user=user)
 
         if result:
