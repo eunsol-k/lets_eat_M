@@ -17,3 +17,11 @@ class CRUDMedicine():
             return True
         else:
             return False
+    
+    def get_by_item_name(self, item_name):
+        medicines = self.session.query(Medicine).filter(
+            Medicine.item_name.like(f'%{item_name}%')
+        ).all()
+        if len(medicines) == 0:
+            return []
+        return medicines

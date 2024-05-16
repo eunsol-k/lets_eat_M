@@ -25,6 +25,8 @@ class CRUDHistory():
     def get_all_by_user(self, user_id, limit_num=10):
         histories = self.session.query(History).filter(
             History.user_id == user_id).order_by(History.modified_date.desc()).limit(limit_num).all()
+        if len(histories) == 0:
+            return []
         return histories
 
     def set(self, user_id, item_id):

@@ -16,13 +16,14 @@ Likes = Namespace(
 )
 
 
-items_fields = Likes.model('items 이하 모델', {
+items_fields = Likes.model('좋아요 items 이하 모델', {
     'item_id': fields.String(description='제품 ID'),
-    'item_img': fields.String(description='제품 이미지')
+    'item_name': fields.String(description='제품명'),
+    'item_image': fields.String(description='제품 이미지')
 })
 
-likes_res_fields = Likes.model('좋아요 목록 응답 모델', {
-    'count': fields.Integer(description='좋아요 물품들 총 개수'),
+likes_res_fields = Likes.model('통상 응답 모델', {
+    'totalCount': fields.Integer(description='item 총 개수'),
     'items': fields.List(fields.Nested(items_fields))
 })
 
@@ -44,29 +45,30 @@ class Like(Resource):
     @Likes.doc(description="""좋아요 전체 목록을 불러옵니다.""")
     @Likes.expect(resource_parser)
     @Likes.response(HTTPStatus.OK.value, '좋아요 전체 목록 조회 성공.', likes_res_fields)
-    @jwt_required
+    @jwt_required()
     def get(self):
         """좋아요 전체 목록 조회"""
         likes = crudInterest.get_all_by_user(user_id=get_jwt_identity())
         items = []
         data = {
-            'count': len(likes),
+            'totalCount': len(likes),
             'items': items
         }
 
         if likes is None or len(likes) == 0:
-            data['count'] = 0
+            data['totalCount'] = 0
         else:
             for like in likes:
                 item_id = like.item_id
                 medicine = crudMedicine.get(item_id=item_id)
                 item = {
                     'item_id': medicine.item_id,
-                    'item_img': medicine.product_img
+                    'item_name': medicine.item_name,
+                    'item_image': medicine.item_image
                 }
                 items.append(item)
 
-        return make_response(jsonify(data=data), HTTPStatus.OK.value)
+        return make_response(data, HTTPStatus.OK.value)
 
 
 @Likes.route('/<item_id>')
@@ -75,7 +77,7 @@ class LikesItem(Resource):
     @Likes.expect(resource_parser)
     @Likes.response(HTTPStatus.OK.value, '제품 좋아요 ON/OFF 성공.', status_message)
     @Likes.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
-    @jwt_required
+    @jwt_required()
     def post(self, item_id):
         """제품 좋아요 상태 갱신"""
         user_id = get_jwt_identity()
@@ -96,7 +98,7 @@ class LikesItem(Resource):
     @Likes.expect(resource_parser)
     @Likes.response(HTTPStatus.OK.value, '제품 좋아요 상태 확인 성공.', likes_cdt_res)
     @Likes.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
-    @jwt_required
+    @jwt_required()
     def get(self, item_id):
         """제품 좋아요 상태 조회"""
         if not crudMedicine.is_exists(item_id=item_id):

@@ -24,13 +24,13 @@ Medicines = Namespace(
 medicine_res_fields = Medicines.model('단일 제품 정보 응답 모델', {
     'item_id': fields.String(description='품목일련번호'),
     'item_name': fields.String(description='품목명'),
-    'enter_id': fields.String(description='업소일련번호'),
-    'enter_name': fields.String(description='업소명'),
-    'constell': fields.String(description='성상'),
-    'product_img': fields.String(description='큰제품이미지'),
+    'entp_seq': fields.String(description='업소일련번호'),
+    'entp_name': fields.String(description='업소명'),
+    'chart': fields.String(description='성상'),
+    'item_image': fields.String(description='큰제품이미지'),
     'disp_front': fields.String(description='표시앞'),
     'disp_back': fields.String(description='표시뒤'),
-    'item_formul': fields.String(description='의약품제형'),
+    'drug_shape': fields.String(description='의약품제형'),
     'color_front': fields.String(description='색상앞'),
     'color_back': fields.String(description='색상뒤'),
     'disv_front': fields.String(description='분할선앞'),
@@ -40,10 +40,10 @@ medicine_res_fields = Medicines.model('단일 제품 정보 응답 모델', {
     'size_thick': fields.String(description='크기두께'),
     'creat_date_img': fields.String(description='이미지생성일자(약학정보원)'),
     'class_id': fields.String(description='분류번호'),
-    'calss_name': fields.String(description='분류명'),
-    'sp_ge': fields.String(description='전문일반구분'),
-    'app_date_item': fields.String(description='품목허가일자'),
-    'formul_name': fields.String(description='제형코드명'),
+    'class_name': fields.String(description='분류명'),
+    'etc_otc_name': fields.String(description='전문일반구분'),
+    'item_permit_date': fields.String(description='품목허가일자'),
+    'form_code_name': fields.String(description='제형코드명'),
     'ind_front_cont': fields.String(description='표기내용앞'),
     'ind_back_cont': fields.String(description='표기내용뒤'),
     'ind_front_img': fields.String(description='표기이미지앞'),
@@ -51,7 +51,14 @@ medicine_res_fields = Medicines.model('단일 제품 정보 응답 모델', {
     'ind_front_code': fields.String(description='표기코드앞'),
     'ind_back_code': fields.String(description='표기코드뒤'),
     'modified_date': fields.String(description='변경일자'),
-    'business_id': fields.String(description='사업자번호'),
+    'bizno': fields.String(description='사업자등록번호'),
+    'bar_code': fields.String(description='표준코드'),
+    'material_name': fields.String(description='원료성분'),
+    'storage_method': fields.String(description='저장방법'),
+    'valid_term': fields.String(description='유효기간'),
+    'type_code': fields.String(description='유형코드'),
+    'type_name': fields.String(description='DUR유형'),
+    'edi_code': fields.String(description='보험코드'),
 })
 
 medicine_res_header = Medicines.model('주의사항 응답 header 정보', {
@@ -80,14 +87,14 @@ medicine_score_res = Medicines.model('단일 제품 평점 응답 모델', {
     'score': fields.String(description='평점')
 })
 
-memos_fields = Medicines.model('memos 이하 모델', {
-    'memo_id': fields.String(description='메모 ID'),
-    'memo_img': fields.String(description='메모 내용')
+memos_fields = Medicines.model('메모 items 이하 모델', {
+    'memo_id': fields.Integer(description='메모 ID'),
+    'memo_body': fields.String(description='메모 내용')
 })
 
-memos_res_fields = Medicines.model('메모 목록 응답 모델', {
-    'count': fields.Integer(description='메모들 총 개수'),
-    'memos': fields.List(fields.Nested(memos_fields))
+memos_res_fields = Medicines.model('통상 응답 모델', {
+    'totalCount': fields.Integer(description='item 총 개수'),
+    'items': fields.List(fields.Nested(memos_fields))
 })
 
 # medicine_res_body = Medicines.model('주의사항 응답 body 정보', {
@@ -137,9 +144,45 @@ class Medicine(Resource):
         if not crudMedicine.is_exists(item_id=item_id):
             return make_response(jsonify(msg="Item Not Found."), HTTPStatus.NOT_FOUND.value)
 
+        url = api_url['DUR']
+        params = {
+            'serviceKey': Config.SERVICE_KEY,
+            'itemSeq': item_id,
+            'type': 'json'
+        }
+
+        response = requests.get(url=url, params=params)
+        response_json = json.loads(response.text)
+
+        if response_json["header"]["resultCode"] != '00':
+            return make_response(jsonify(msg="Internal Server Error."), HTTPStatus.INTERNAL_SERVER_ERROR.value)
+
+        dur_items = response_json["body"]["items"][0]
+
+        print(f'dur_items: {dur_items}')
+        
+        material_name_list = []
+        material_name_string = str(dur_items['MATERIAL_NAME'])
+        material_name_arr = material_name_string.split('/')
+        for material_name in material_name_arr:
+            item = material_name.split(',')
+            material_name_list.append(f'{item[0]}({item[4]}) {item[2]}{item[3]}')
+
         medicine = crudMedicine.get(item_id=item_id)
         medicine_dict = vars(medicine)
         del medicine_dict['_sa_instance_state']
+
+        dur_dict = {
+            'bar_code': dur_items['BAR_CODE'],  # 표준코드
+            'material_name': material_name_list,  # 원료성분
+            'storage_method': dur_items['STORAGE_METHOD'],  # 저장방법
+            'valid_term': dur_items['VALID_TERM'],  # 유효기간
+            'type_code': dur_items['TYPE_CODE'],  # 유형코드
+            'type_name': dur_items['TYPE_NAME  '],  # DUR유형
+            'edi_code': dur_items['EDI_CODE']  # 보험코드
+        }
+
+        medicine_dict.update(dur_dict)
 
         return medicine_dict, HTTPStatus.OK.value
 
@@ -177,7 +220,7 @@ class MedicineScore(Resource):
     @Medicines.expect(resource_parser)
     @Medicines.response(HTTPStatus.OK.value, '평점 조회 성공.', medicine_score_res)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
-    @jwt_required
+    @jwt_required()
     def get(self, item_id):
         """단일 제품 평점 조회"""
         user_id = get_jwt_identity()
@@ -191,7 +234,7 @@ class MedicineScore(Resource):
     @Medicines.expect(request_score_parser)
     @Medicines.response(HTTPStatus.OK.value, '평점 갱신 성공.', status_message)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
-    @jwt_required
+    @jwt_required()
     def post(self, item_id):
         """단일 제품 평점 갱신"""
         args = Medicines.payload
@@ -212,7 +255,7 @@ class MedicineMemo(Resource):
     @Medicines.expect(resource_parser)
     @Medicines.response(HTTPStatus.OK.value, '평점 조회 성공.', memos_res_fields)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
-    @jwt_required
+    @jwt_required()
     def get(self, item_id):
         """메모 목록 조회"""
         if not crudMedicine.is_exists(item_id=item_id):
@@ -221,12 +264,12 @@ class MedicineMemo(Resource):
         memos = crudMemo.get_all(user_id=get_jwt_identity(), item_id=item_id)
         items = []
         data = {
-            'count': len(memos),
-            'memos': items
+            'totalCount': len(memos),
+            'items': items
         }
 
         if memos is None or len(memos) == 0:
-            data['count'] = 0
+            data['totalCount'] = 0
         else:
             for memo in memos:
                 item = {
@@ -235,13 +278,13 @@ class MedicineMemo(Resource):
                 }
                 items.append(item)
 
-        return make_response(jsonify(data=data), HTTPStatus.OK.value)
+        return make_response(data, HTTPStatus.OK.value)
 
     @Medicines.doc(description="""메모를 추가합니다.""")
     @Medicines.expect(request_body_parser)
     @Medicines.response(HTTPStatus.CREATED.value, '메모 추가 성공.', status_message)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
-    @jwt_required
+    @jwt_required()
     def post(self, item_id):
         """메모 추가"""
         args = Medicines.payload
@@ -260,9 +303,9 @@ class MedicineMemo(Resource):
 class MedicineMemo(Resource):
     @Medicines.doc(description="""메모를 삭제합니다.""")
     @Medicines.expect(resource_parser)
-    @Medicines.response(HTTPStatus.OK.value, '메모 삭제 성공.', status_message)
-    @jwt_required
+    @Medicines.response(HTTPStatus.NO_CONTENT.value, '메모 삭제 성공.', status_message)
+    @jwt_required()
     def delete(self, memo_id):
         """메모 삭제"""
         crudMemo.delete(memo_id=memo_id)
-        return make_response(jsonify(msg="Deleted memo."), HTTPStatus.OK.value)
+        return make_response(jsonify(msg="Deleted memo."), HTTPStatus.NO_CONTENT.value)
