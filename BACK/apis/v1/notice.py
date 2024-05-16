@@ -118,6 +118,7 @@ class NoticesWithID(Resource):
         notice_dict = vars(notice)
         del notice_dict['_sa_instance_state']
 
+        crudNotice.update_hits(notice_id=notice_id)
         return notice_dict, HTTPStatus.OK.value
 
     @Notice.doc(description="""공지사항을 수정합니다.""")
