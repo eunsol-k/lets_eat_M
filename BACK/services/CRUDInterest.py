@@ -34,4 +34,6 @@ class CRUDInterest():
     def get_all_by_user(self, user_id):
         likes = self.session.query(Interest).filter(
             Interest.user_id == user_id).order_by(Interest.modified_date.desc()).all()
+        if len(likes) == 0:
+            return []
         return likes

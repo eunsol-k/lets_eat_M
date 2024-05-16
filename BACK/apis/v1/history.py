@@ -2,7 +2,6 @@ from flask import jsonify, make_response
 from services.CRUDHistory import CRUDHistory
 from services.CRUDMedicine import CRUDMedicine
 from services.CRUDInterest import CRUDInterest
-import json
 from http import HTTPStatus
 from flask_restx import Resource, Namespace, fields, reqparse
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -27,16 +26,17 @@ status_message = History.model(name="HTTP Status 메시지 모델", model={
     "msg": fields.String(description="Status 내용")
 })
 
-histories_fields = History.model('histories 이하 모델', {
-    'history_id': fields.String(description='검색 ID'),
+histories_fields = History.model('검색 기록 items 이하 모델', {
+    'history_id': fields.Integer(description='검색 기록 ID'),
     'item_id': fields.String(description='제품 ID'),
-    'item_img': fields.String(description='제품 이미지'),
+    'item_name': fields.String(description='제품명'),
+    'item_image': fields.String(description='제품 이미지'),
     'like': fields.Boolean(description='좋아요 여부')
 })
 
-histories_res_fields = History.model('검색 목록 응답 모델', {
-    'count': fields.Integer(description='검색 기록 총 개수'),
-    'histories': fields.List(fields.Nested(histories_fields))
+histories_res_fields = History.model('통상 응답 모델', {
+    'totalCount': fields.Integer(description='item 총 개수'),
+    'items': fields.List(fields.Nested(histories_fields))
 })
 
 
@@ -59,12 +59,12 @@ class HistoryGet(Resource):
             histories = crudHistory.get_all_by_user(user_id=user_id)
             items = []
             data = {
-                'count': len(histories),
-                'histories': items
+                'totalCount': len(histories),
+                'items': items
             }
 
             if histories is None or len(histories) == 0:
-                data['count'] = 0
+                data['totalCount'] = 0
             else:
                 for history in histories:
                     medicine = crudMedicine.get(item_id=history.item_id)
@@ -74,12 +74,13 @@ class HistoryGet(Resource):
                     item = {
                         'history_id': history.id,
                         'item_id': history.user_id,
-                        'item_img': medicine.product_img,
+                        'item_name': medicine.item_name,
+                        'item_image': medicine.item_image,
                         'like': interest
                     }
                     items.append(item)
 
-            return make_response(jsonify(data=data), HTTPStatus.OK.value)
+            return make_response(data, HTTPStatus.OK.value)
 
 
 @History.route("/<item_id>")

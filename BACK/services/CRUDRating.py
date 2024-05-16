@@ -25,7 +25,7 @@ class CRUDRating():
             rating = self.get(user_id=user_id, item_id=item_id)
             return rating.score
         else:
-            return None
+            return 0
 
     def set(self, user_id, item_id, score):
         if self.is_exists(user_id=user_id, item_id=item_id):

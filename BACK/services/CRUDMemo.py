@@ -10,7 +10,7 @@ class CRUDMemo():
         memos = self.session.query(Memo).filter(
             Memo.user_id == user_id,
             Memo.item_id == item_id).order_by(Memo.modified_date.desc()).all()
-        return memos
+        return memos[0]
 
     def get(self, memo_id):
         memo = self.session.query(Memo).filter(
