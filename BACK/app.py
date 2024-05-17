@@ -42,6 +42,7 @@ def register_router(app: Flask):
     from apis.v1.history import History
     from apis.v1.search import Search
     from apis.v1.notice import Notice
+    from apis.v1.user import Users
 
     api.add_namespace(Auth, '/auth')
     api.add_namespace(Likes, '/likes')
@@ -49,6 +50,7 @@ def register_router(app: Flask):
     api.add_namespace(History, '/history')
     api.add_namespace(Search, '/search')
     api.add_namespace(Notice, '/notice')
+    api.add_namespace(Users, '/users')
 
 def create_app():
     app = Flask(__name__)

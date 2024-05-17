@@ -1,4 +1,4 @@
-from flask import jsonify, make_response
+from flask import make_response
 from services.CRUDMedicine import CRUDMedicine
 from http import HTTPStatus
 from flask_restx import Resource, Namespace, fields

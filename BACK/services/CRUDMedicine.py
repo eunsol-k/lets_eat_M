@@ -1,6 +1,6 @@
 from MODEL.session import Session
-from MODEL.base_classes import Medicine
-from sqlalchemy import or_
+from MODEL.base_classes import Medicine, Memo
+from sqlalchemy import or_, distinct
 
 class CRUDMedicine():
     def __init__(self) -> None:
@@ -26,4 +26,11 @@ class CRUDMedicine():
         )).all()
         if len(medicines) == 0:
             return []
+        return medicines
+    
+    def get_all_by_user_written(self, user_id):
+        medicines = self.session.query(distinct(Medicine.item_id)).join(
+            Memo, Medicine.item_id == Memo.item_id).filter(
+                Memo.user_id == user_id
+        ).all()
         return medicines
