@@ -38,3 +38,8 @@ class CRUDHistory():
             history = History(user_id=user_id, item_id=item_id, modified_date=datetime.today())
             self.session.add(history)
             self.session.commit()
+    
+    def delete(self, user_id, item_id):
+        history = self.get(user_id=user_id, item_id=item_id)
+        self.session.delete(history)
+        self.session.commit()
