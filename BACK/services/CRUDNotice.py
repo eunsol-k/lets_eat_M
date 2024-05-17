@@ -10,17 +10,17 @@ class CRUDNotice():
     def get_all(self):
         notices_fixed = self.session.query(Notice).filter(
             Notice.fixed == True).order_by(
-            Notice.modified_date.desc()).all()
+            Notice.created_date.desc()).all()
         
         notices_unfixed = self.session.query(Notice).filter(
             Notice.fixed == False).order_by(
-            Notice.modified_date.desc()).all()
+            Notice.created_date.desc()).all()
         
-        notices_fixed.append(notices_unfixed)
+        notices_fixed.extend(notices_unfixed)
         if len(notices_fixed) == 0:
             return []
-
-        return notices_fixed[0]
+        
+        return notices_fixed
 
     def get(self, notice_id) -> Notice:
         notice = self.session.query(Notice).filter(
@@ -28,7 +28,7 @@ class CRUDNotice():
         return notice
 
     def set(self, title, body, fixed=False):
-        notice = Notice(title=title, body=body, created_date=datetime.today(), modified_date=datetime.today(), hits=0, fixed=fixed)
+        notice = Notice(title=title, body=body, created_date=datetime.today(), modified_date=None, hits=0, fixed=fixed)
         self.session.add(notice)
         self.session.commit()
     
@@ -41,6 +41,7 @@ class CRUDNotice():
         if fixed is not None:
             notice.fixed = fixed
 
+        notice.modified_date = datetime.today()
         self.session.commit()
     
     def delete(self, notice_id):
@@ -49,8 +50,8 @@ class CRUDNotice():
         self.session.commit()
     
     def update_hits(self, notice_id):
-        notice = self.get(notice_id=notice_id)
-        notice.hits += 1
+        self.session.query(Notice).filter(
+            Notice.id == notice_id).update({'hits': Notice.hits + 1})
         self.session.commit()
     
     def change_fixed_value(self, notice_id):

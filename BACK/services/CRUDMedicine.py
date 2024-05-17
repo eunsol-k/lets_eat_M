@@ -1,5 +1,6 @@
 from MODEL.session import Session
 from MODEL.base_classes import Medicine
+from sqlalchemy import or_
 
 class CRUDMedicine():
     def __init__(self) -> None:
@@ -17,11 +18,12 @@ class CRUDMedicine():
             return True
         else:
             return False
-    
-    def get_by_item_name(self, item_name):
-        medicines = self.session.query(Medicine).filter(
-            Medicine.item_name.like(f'%{item_name}%')
-        ).all()
+
+    def get_by_search_value(self, search_value):
+        medicines = self.session.query(Medicine).filter(or_(
+            Medicine.item_name.like(f'%{search_value}%'),
+            Medicine.class_name.like(f'%{search_value}%')
+        )).all()
         if len(medicines) == 0:
             return []
         return medicines

@@ -31,7 +31,8 @@ histories_fields = History.model('조회 기록 items 이하 모델', {
     'item_id': fields.String(description='제품 ID'),
     'item_name': fields.String(description='제품명'),
     'item_image': fields.String(description='제품 이미지'),
-    'like': fields.Boolean(description='좋아요 여부')
+    'like': fields.Boolean(description='좋아요 여부'),
+    'updated_date': fields.DateTime(description='좋아요 처리한 일자')
 })
 
 histories_res_fields = History.model('통상 응답 모델', {
@@ -73,10 +74,11 @@ class HistoryGet(Resource):
 
                     item = {
                         'history_id': history.id,
-                        'item_id': history.user_id,
+                        'item_id': history.item_id,
                         'item_name': medicine.item_name,
                         'item_image': medicine.item_image,
-                        'like': interest
+                        'like': interest,
+                        'updated_date': history.modified_date
                     }
                     items.append(item)
 
@@ -99,16 +101,17 @@ class HistoryPost(Resource):
 
         return make_response(jsonify(msg="Added search history."), HTTPStatus.CREATED.value)
 
-    @History.doc(description="""조회 기록을 삭제합니다.""")
+    @History.doc(description="""조회 기록을 삭제합니다.\nPATH 값이 history_id가 아니라 item_id임에 유의합니다.""")
     @History.expect(resource_parser)
     @History.response(HTTPStatus.NO_CONTENT.value, '조회 기록 삭제 성공.', status_message)
-    @History.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
+    @History.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품 또는 조회 내역입니다.', status_message)
     @jwt_required()
     def delete(self, item_id):
         """조회 기록 삭제"""
-        if not crudMedicine.is_exists(item_id=item_id):
-            return make_response(jsonify(msg="Item Not Found."), HTTPStatus.NOT_FOUND.value)
+        user_id = get_jwt_identity()
+        if not crudMedicine.is_exists(item_id=item_id) or not crudHistory.is_exists(user_id=user_id, item_id=item_id):
+            return make_response(jsonify(msg="Item or History Not Found."), HTTPStatus.NOT_FOUND.value)
 
-        crudHistory.delete(user_id=get_jwt_identity(), item_id=item_id)
+        crudHistory.delete(user_id=user_id, item_id=item_id)
 
         return make_response(jsonify(msg="Deleted search history."), HTTPStatus.NO_CONTENT.value)

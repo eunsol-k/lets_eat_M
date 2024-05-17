@@ -46,7 +46,6 @@ token_patch_model = Auth.model(name="토큰 갱신 응답 모델", model={
 
 user_model = Auth.model(name="사용자 모델", model={
     "id": fields.String(description="사용자 아이디"),
-    "pw": fields.String(description="사용자 비밀번호"),
     "username": fields.String(description="사용자 이름"),
     "expired_date": fields.DateTime(description="회원 탈퇴 일자")
 })
@@ -103,13 +102,19 @@ class AuthToken(Resource):
 class AuthUsers(Resource):
     @Auth.doc(description="""사용자를 조회하는 API입니다.""")
     @Auth.expect(resource_parser)
-    @Auth.marshal_with(fields=user_model, as_list=True, code=HTTPStatus.OK.value, description="사용자 조회 성공.")
+    @Auth.response(HTTPStatus.OK.value, "사용자 조회 성공.", user_model)
+    @Auth.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 회원 조회 불가.', status_message)
     @jwt_required()
     def get(self):
         """회원 조회"""
         user = crudUser.get(user_id=get_jwt_identity())
-        user_dict = vars(user)
+        if not user:
+            return make_response(jsonify(msg='Non-existent User.'), HTTPStatus.NOT_FOUND.value)
+
+        user_dict = user.__dict__
+        
         del user_dict['_sa_instance_state']
+        del user_dict['pw']
 
         return user_dict, HTTPStatus.OK.value
     

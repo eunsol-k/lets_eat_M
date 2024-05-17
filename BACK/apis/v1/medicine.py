@@ -6,6 +6,7 @@ from http import HTTPStatus
 from flask_restx import Resource, Namespace, fields, reqparse
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from configs.config import Config, api_url
+from urllib.parse import unquote
 import json
 import requests
 
@@ -89,7 +90,8 @@ medicine_score_res = Medicines.model('단일 제품 평점 응답 모델', {
 
 memos_fields = Medicines.model('메모 items 이하 모델', {
     'memo_id': fields.Integer(description='메모 ID'),
-    'memo_body': fields.String(description='메모 내용')
+    'memo_body': fields.String(description='메모 내용'),
+    'created_date': fields.String(description='메모 작성일')
 })
 
 memos_res_fields = Medicines.model('통상 응답 모델', {
@@ -121,7 +123,7 @@ request_score_parser = reqparse.RequestParser()
 request_score_parser.add_argument(
     "Authorization", help="Bearer {access_token}", type=str, required=True, location="headers", default="Bearer ")
 request_score_parser.add_argument(
-    "score", type=str, required=True, location="body")
+    "score", help="소숫점도 받을 수 있도록 String Type입니다.", type=str, required=True, location="body")
 
 request_body_parser = reqparse.RequestParser()
 request_body_parser.add_argument(
@@ -139,6 +141,7 @@ class Medicine(Resource):
     @Medicines.doc(description="""item_id에 해당하는 특정 제품의 상세 정보를 조회합니다.""")
     @Medicines.response(HTTPStatus.OK.value, '단일 제품 정보 조회 성공.', medicine_res_fields)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
+    @Medicines.response(HTTPStatus.INTERNAL_SERVER_ERROR.value, '공공데이터 측에서 데이터를 보유하고 있지 않습니다.', status_message)
     def get(self, item_id):
         """단일 제품 정보 조회"""
         if not crudMedicine.is_exists(item_id=item_id):
@@ -146,7 +149,7 @@ class Medicine(Resource):
 
         url = api_url['DUR']
         params = {
-            'serviceKey': Config.SERVICE_KEY,
+            'serviceKey': unquote(Config.SERVICE_KEY),
             'itemSeq': item_id,
             'type': 'json'
         }
@@ -157,32 +160,31 @@ class Medicine(Resource):
         if response_json["header"]["resultCode"] != '00':
             return make_response(jsonify(msg="Internal Server Error."), HTTPStatus.INTERNAL_SERVER_ERROR.value)
 
-        dur_items = response_json["body"]["items"][0]
-
-        print(f'dur_items: {dur_items}')
-        
-        material_name_list = []
-        material_name_string = str(dur_items['MATERIAL_NAME'])
-        material_name_arr = material_name_string.split('/')
-        for material_name in material_name_arr:
-            item = material_name.split(',')
-            material_name_list.append(f'{item[0]}({item[4]}) {item[2]}{item[3]}')
-
         medicine = crudMedicine.get(item_id=item_id)
-        medicine_dict = vars(medicine)
+        medicine_dict = medicine.__dict__
         del medicine_dict['_sa_instance_state']
 
-        dur_dict = {
-            'bar_code': dur_items['BAR_CODE'],  # 표준코드
-            'material_name': material_name_list,  # 원료성분
-            'storage_method': dur_items['STORAGE_METHOD'],  # 저장방법
-            'valid_term': dur_items['VALID_TERM'],  # 유효기간
-            'type_code': dur_items['TYPE_CODE'],  # 유형코드
-            'type_name': dur_items['TYPE_NAME  '],  # DUR유형
-            'edi_code': dur_items['EDI_CODE']  # 보험코드
-        }
+        if not response_json["body"]["totalCount"] == 0:
+            dur_items = response_json["body"]["items"][0]
+            
+            material_name_list = []
+            material_name_string = str(dur_items['MATERIAL_NAME'])
+            material_name_arr = material_name_string.split('/')
+            for material_name in material_name_arr:
+                item = material_name.split(',')
+                material_name_list.append(f'{item[0]}({item[4]}) {item[2]}{item[3]}')
 
-        medicine_dict.update(dur_dict)
+            dur_dict = {
+                'bar_code': dur_items['BAR_CODE'],  # 표준코드
+                'material_name': material_name_list,  # 원료성분
+                'storage_method': dur_items['STORAGE_METHOD'],  # 저장방법
+                'valid_term': dur_items['VALID_TERM'],  # 유효기간
+                'type_code': dur_items['TYPE_CODE'],  # 유형코드
+                'type_name': dur_items['TYPE_NAME  '],  # DUR유형
+                'edi_code': dur_items['EDI_CODE']  # 보험코드
+            }
+
+            medicine_dict.update(dur_dict)
 
         return medicine_dict, HTTPStatus.OK.value
 
@@ -193,6 +195,7 @@ class MedicineWarning(Resource):
     @Medicines.response(HTTPStatus.OK.value, '주의사항 조회 성공.', medicine_warning_res)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
     @Medicines.response(HTTPStatus.INTERNAL_SERVER_ERROR.value, '공공데이터 요청에 실패했습니다.', status_message)
+    @Medicines.response(HTTPStatus.INTERNAL_SERVER_ERROR.value, '공공데이터 측에서 데이터를 보유하고 있지 않습니다.', status_message)
     def get(self, item_id):
         """단일 제품 주의사항 조회"""
         if not crudMedicine.is_exists(item_id=item_id):
@@ -200,7 +203,7 @@ class MedicineWarning(Resource):
 
         url = api_url['warning']
         params = {
-            'ServiceKey': Config.SERVICE_KEY,
+            'ServiceKey': unquote(Config.SERVICE_KEY),
             'itemSeq': item_id,
             'type': 'json'
         }
@@ -210,6 +213,9 @@ class MedicineWarning(Resource):
 
         if response_json["header"]["resultCode"] != '00':
             return make_response(jsonify(msg="Internal Server Error."), HTTPStatus.INTERNAL_SERVER_ERROR.value)
+        
+        if response_json["body"]["totalCount"] == 0:
+            return make_response(jsonify(msg="No Content."), HTTPStatus.NO_CONTENT.value)
 
         return make_response(response_json["body"]["items"][0], HTTPStatus.OK.value)
 
@@ -220,6 +226,7 @@ class MedicineScore(Resource):
     @Medicines.expect(resource_parser)
     @Medicines.response(HTTPStatus.OK.value, '평점 조회 성공.', medicine_score_res)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
+    @Medicines.response(HTTPStatus.NO_CONTENT.value, '아직 평점이 업습니다.', status_message)
     @jwt_required()
     def get(self, item_id):
         """단일 제품 평점 조회"""
@@ -227,6 +234,10 @@ class MedicineScore(Resource):
 
         if not crudMedicine.is_exists(item_id=item_id):
             return make_response(jsonify(msg="Item Not Found."), HTTPStatus.NOT_FOUND.value)
+        
+        score = crudRating.get_score(user_id=user_id, item_id=item_id)
+        if not score or score == "":
+            return make_response(jsonify(msg="No Score value."), HTTPStatus.NO_CONTENT.value)
 
         return make_response(jsonify(score=crudRating.get_score(user_id=user_id, item_id=item_id)), HTTPStatus.OK.value)
 
@@ -234,6 +245,7 @@ class MedicineScore(Resource):
     @Medicines.expect(request_score_parser)
     @Medicines.response(HTTPStatus.OK.value, '평점 갱신 성공.', status_message)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
+    @Medicines.response(HTTPStatus.BAD_REQUEST.value, '0 ~ 5 사이의 숫자를 문자열 형태로 입력해주세요.', status_message)
     @jwt_required()
     def post(self, item_id):
         """단일 제품 평점 갱신"""
@@ -243,6 +255,9 @@ class MedicineScore(Resource):
 
         if not crudMedicine.is_exists(item_id=item_id):
             return make_response(jsonify(msg="Item Not Found."), HTTPStatus.NOT_FOUND.value)
+        
+        if score == None or score == "":
+            return make_response(jsonify(msg="Request must be String Value between 0 and 5."), HTTPStatus.BAD_REQUEST.value)
 
         crudRating.set(user_id=user_id, item_id=item_id, score=score)
 
@@ -253,7 +268,7 @@ class MedicineScore(Resource):
 class MedicineMemo(Resource):
     @Medicines.doc(description="""item_id에 해당하는 제품에 대한 메모 목록을 조회합니다.""")
     @Medicines.expect(resource_parser)
-    @Medicines.response(HTTPStatus.OK.value, '평점 조회 성공.', memos_res_fields)
+    @Medicines.response(HTTPStatus.OK.value, '메모 목록 성공.', memos_res_fields)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
     @jwt_required()
     def get(self, item_id):
@@ -274,7 +289,8 @@ class MedicineMemo(Resource):
             for memo in memos:
                 item = {
                     'memo_id': memo.id,
-                    'memo_body': memo.body
+                    'memo_body': memo.body,
+                    'created_date': memo.created_date
                 }
                 items.append(item)
 
@@ -304,8 +320,13 @@ class MedicineMemo(Resource):
     @Medicines.doc(description="""메모를 삭제합니다.""")
     @Medicines.expect(resource_parser)
     @Medicines.response(HTTPStatus.NO_CONTENT.value, '메모 삭제 성공.', status_message)
+    @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 메모 삭제 불가.', status_message)
     @jwt_required()
     def delete(self, memo_id):
         """메모 삭제"""
+        memo = crudMemo.get(memo_id=memo_id)
+        if not memo:
+            return make_response(jsonify(msg="Cannot Found memo."), HTTPStatus.NOT_FOUND.value)
+
         crudMemo.delete(memo_id=memo_id)
         return make_response(jsonify(msg="Deleted memo."), HTTPStatus.NO_CONTENT.value)
