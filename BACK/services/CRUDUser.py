@@ -44,7 +44,7 @@ class CRUDUser():
     def is_correct(self, user_id, user_pw:str) -> bool:
         user = self.get(user_id=user_id)
 
-        if user.role == 'ADMIN': return True
+        if user.role == 'ADMIN' and user_pw == user.pw: return True
         
         hashed_pw = user.pw
         if bcrypt.checkpw(user_pw.encode("utf-8"), hashed_pw.encode("utf-8")):
