@@ -39,7 +39,7 @@ notice_fields = Notice.model('공지사항 items 이하 모델', {
     'created_date': fields.String(description='게시물 생성일자'),
 })
 
-notice_all_res_fields = Notice.model('통상 응답 모델', {
+notice_all_res_fields = Notice.model('공지사항 목록 응답 모델', {
     'totalCount': fields.Integer(description='item 총 개수'),
     'items': fields.List(fields.Nested(notice_fields))
 })
