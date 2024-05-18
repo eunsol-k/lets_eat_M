@@ -35,7 +35,7 @@ histories_fields = History.model('조회 기록 items 이하 모델', {
     'updated_date': fields.DateTime(description='좋아요 처리한 일자')
 })
 
-histories_res_fields = History.model('통상 응답 모델', {
+histories_res_fields = History.model('조회 기록 목록 응답 모델', {
     'totalCount': fields.Integer(description='item 총 개수'),
     'items': fields.List(fields.Nested(histories_fields))
 })

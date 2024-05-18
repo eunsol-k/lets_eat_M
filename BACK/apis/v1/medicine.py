@@ -54,7 +54,7 @@ medicine_res_fields = Medicines.model('단일 제품 정보 응답 모델', {
     'modified_date': fields.String(description='변경일자'),
     'bizno': fields.String(description='사업자등록번호'),
     'bar_code': fields.String(description='표준코드'),
-    'material_name': fields.String(description='원료성분'),
+    'material_name': fields.List(fields.String(description='원료성분 목록')),
     'storage_method': fields.String(description='저장방법'),
     'valid_term': fields.String(description='유효기간'),
     'type_code': fields.String(description='유형코드'),
@@ -94,7 +94,7 @@ memos_fields = Medicines.model('메모 items 이하 모델', {
     'created_date': fields.String(description='메모 작성일')
 })
 
-memos_res_fields = Medicines.model('통상 응답 모델', {
+memos_res_fields = Medicines.model('메모 목록 응답 모델', {
     'totalCount': fields.Integer(description='item 총 개수'),
     'items': fields.List(fields.Nested(memos_fields))
 })
@@ -195,7 +195,7 @@ class MedicineWarning(Resource):
     @Medicines.response(HTTPStatus.OK.value, '주의사항 조회 성공.', medicine_warning_res)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
     @Medicines.response(HTTPStatus.INTERNAL_SERVER_ERROR.value, '공공데이터 요청에 실패했습니다.', status_message)
-    @Medicines.response(HTTPStatus.INTERNAL_SERVER_ERROR.value, '공공데이터 측에서 데이터를 보유하고 있지 않습니다.', status_message)
+    @Medicines.response(HTTPStatus.NO_CONTENT.value, '공공데이터 측에서 데이터를 보유하고 있지 않습니다.', status_message)
     def get(self, item_id):
         """단일 제품 주의사항 조회"""
         if not crudMedicine.is_exists(item_id=item_id):
@@ -226,7 +226,7 @@ class MedicineScore(Resource):
     @Medicines.expect(resource_parser)
     @Medicines.response(HTTPStatus.OK.value, '평점 조회 성공.', medicine_score_res)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
-    @Medicines.response(HTTPStatus.NO_CONTENT.value, '아직 평점이 업습니다.', status_message)
+    @Medicines.response(HTTPStatus.NO_CONTENT.value, '아직 평점이 없습니다.', status_message)
     @jwt_required()
     def get(self, item_id):
         """단일 제품 평점 조회"""
@@ -268,7 +268,7 @@ class MedicineScore(Resource):
 class MedicineMemo(Resource):
     @Medicines.doc(description="""item_id에 해당하는 제품에 대한 메모 목록을 조회합니다.""")
     @Medicines.expect(resource_parser)
-    @Medicines.response(HTTPStatus.OK.value, '메모 목록 성공.', memos_res_fields)
+    @Medicines.response(HTTPStatus.OK.value, '메모 목록 조회 성공.', memos_res_fields)
     @Medicines.response(HTTPStatus.NOT_FOUND.value, '존재하지 않는 제품입니다.', status_message)
     @jwt_required()
     def get(self, item_id):

@@ -44,7 +44,7 @@ token_patch_model = Auth.model(name="토큰 갱신 응답 모델", model={
     "access_token": fields.String(description="액세스 토큰")
 })
 
-user_model = Auth.model(name="사용자 모델", model={
+user_model = Auth.model(name="사용자 조회 응답 모델", model={
     "id": fields.String(description="사용자 아이디"),
     "username": fields.String(description="사용자 이름"),
     "expired_date": fields.DateTime(description="회원 탈퇴 일자")

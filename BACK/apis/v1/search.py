@@ -22,7 +22,7 @@ search_fields = Search.model('검색 items 이하 모델', {
     'etc_otc_name': fields.String(description='전문/일반')
 })
 
-search_res_fields = Search.model('통상 응답 모델', {
+search_res_fields = Search.model('검색 기록 목록 응답 모델', {
     'totalCount': fields.Integer(description='item 총 개수'),
     'items': fields.List(fields.Nested(search_fields))
 })

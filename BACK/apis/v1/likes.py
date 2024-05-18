@@ -22,7 +22,7 @@ items_fields = Likes.model('좋아요 items 이하 모델', {
     'item_image': fields.String(description='제품 이미지')
 })
 
-likes_res_fields = Likes.model('통상 응답 모델', {
+likes_res_fields = Likes.model('좋아요 전체 목록 응답 모델', {
     'totalCount': fields.Integer(description='item 총 개수'),
     'items': fields.List(fields.Nested(items_fields))
 })
@@ -35,8 +35,8 @@ status_message = Likes.model(name="HTTP Status 메시지 모델", model={
     "msg": fields.String(description="Status 내용")
 })
 
-likes_cdt_res = Likes.model(name="좋아요 상태 확인 모델", model={
-    "is_exists": fields.Boolean(description="좋아요 여부")
+likes_cdt_res = Likes.model(name="좋아요 상태 확인 요청 모델", model={
+    "is_liked": fields.Boolean(description="좋아요 여부")
 })
 
 
@@ -104,5 +104,6 @@ class LikesItem(Resource):
         if not crudMedicine.is_exists(item_id=item_id):
             return make_response(jsonify(msg="Item Not Found."), HTTPStatus.NOT_FOUND.value)
         else:
-            is_exists = crudInterest.is_exists(user_id=get_jwt_identity(), item_id=item_id)
-            return make_response(jsonify(is_exists=is_exists), HTTPStatus.OK.value)
+            is_liked = crudInterest.is_exists(
+                user_id=get_jwt_identity(), item_id=item_id)
+            return make_response(jsonify(is_liked=is_liked), HTTPStatus.OK.value)
